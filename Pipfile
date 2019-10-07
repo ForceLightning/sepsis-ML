@@ -15,6 +15,9 @@ torch = "*"
 torchvision = "*"
 matplotlib = "*"
 seaborn = "*"
+psycopg2 = "*"
+pykrige = "*"
+fastai = "*"
 
 [requires]
 python_version = "3.6"

@@ -1,0 +1,3 @@
+[submodule "TCN"]
+	path = TCN
+	url = https://github.com/ForceLightning/TCN.git
