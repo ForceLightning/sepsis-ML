@@ -18,6 +18,9 @@ seaborn = "*"
 psycopg2 = "*"
 pykrige = "*"
 fastai = "*"
+tqdm = "*"
+intel-openmp = "*"
+h5py = "*"
 
 [requires]
 python_version = "3.6"

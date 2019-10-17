@@ -1,3 +1,6 @@
 [submodule "TCN"]
 	path = TCN
 	url = https://github.com/ForceLightning/TCN.git
+[submodule "challenge/evaluation-2019"]
+	path = challenge/evaluation-2019
+	url = https://github.com/physionetchallenges/evaluation-2019.git
