@@ -4,6 +4,15 @@ url = "https://pypi.org/simple"
 verify_ssl = true
 
 [dev-packages]
+numpy = "*"
+ninja = "*"
+pyyaml = "*"
+mkl = "*"
+mkl-include = "*"
+setuptools = "*"
+cmake = "*"
+cffi = "*"
+typing = "*"
 
 [packages]
 jupyter = "*"
