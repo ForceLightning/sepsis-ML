@@ -202,3 +202,8 @@ pip-selfcheck.json
 
 # Physionet MIMIC III database
 mimiciii/*
+# challenge/training/*
+# challenge/training_setB/*
+# challenge/*.zip
+# challenge/interpolated/**
+challenge/**
