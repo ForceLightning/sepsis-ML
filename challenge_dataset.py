@@ -14,7 +14,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
-import h5py
+# import h5py
 import sklearn
 
 ## Specific module imports
@@ -126,9 +126,9 @@ def pad_collate(batch):
 # FastAI Learner + Pytorch model definitions
 
 if __name__ == '__main__':
-    torch.multiprocessing.set_start_method('forkserver')
+    torch.multiprocessing.set_start_method('spawn')
 
-    dl = data_list.from_folder('challenge/interpolated/training_cov_npy/')
+    dl = data_list.from_folder('D:/training_cov_npy/')
     dl.filter_by_func(lambda fn: fn.suffix == '.npy')
     sd = dl.split_none()
 
@@ -204,6 +204,7 @@ if __name__ == '__main__':
             self.output.weight.data.normal_(0, 0.01)
 
         def forward(self, x):
+            x = x.to(self.tcn.network[0].net[0].weight.dtype)
             y1 = self.tcn(x)
             o = self.output(y1.transpose(1, 2)).squeeze()
             return o
@@ -222,7 +223,7 @@ if __name__ == '__main__':
         print("Loading Database", end='\t')
         datab = ll.transform([]).databunch(
             collate_fn=pad_collate,
-            num_workers=8,
+            num_workers=4,
             pin_memory=True,
             bs=512
         )
@@ -241,7 +242,7 @@ if __name__ == '__main__':
 
         learn = Learner(
             data=datab,
-            model=net,
+            model=net.cuda(),
             loss_func=nn.BCEWithLogitsLoss(),
             path='prototyping',
             model_dir='fold-%d' % (idx+1),
@@ -250,7 +251,7 @@ if __name__ == '__main__':
                 ShowGraph
             ],
             metrics=[fbeta],
-        )
+        ).to_fp16(loss_scale=512)
         learn.fit(
             1,
             callbacks=[

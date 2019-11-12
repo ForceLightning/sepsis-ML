@@ -4,32 +4,26 @@ url = "https://pypi.org/simple"
 verify_ssl = true
 
 [dev-packages]
-numpy = "*"
-ninja = "*"
 pyyaml = "*"
 mkl = "*"
 mkl-include = "*"
 setuptools = "*"
 cmake = "*"
 cffi = "*"
-typing = "*"
+ninja = "*"
+numpy = "*"
 
 [packages]
+pywin32 = "==225"
 jupyter = "*"
 jupyterthemes = "*"
 pandas = "*"
 scikit-learn = "*"
 numpy = "*"
-torch = "*"
-torchvision = "*"
 matplotlib = "*"
 seaborn = "*"
-psycopg2 = "*"
-pykrige = "*"
 fastai = "*"
 tqdm = "*"
-intel-openmp = "*"
-h5py = "*"
 
 [requires]
 python_version = "3.6"
