@@ -180,7 +180,7 @@ if __name__ == '__main__':
             self.network = nn.Sequential(*layers)
 
         def forward(self, x):
-            x = x.float()
+            # x = x.float()
             if self.use_skip_connections:
                 for tb in [m for m in self.network.modules()][2].children():
                     skips = [layer for layer in tb.children()][-1]
@@ -204,6 +204,10 @@ if __name__ == '__main__':
             self.output.weight.data.normal_(0, 0.01)
 
         def forward(self, x):
+<<<<<<< HEAD
+=======
+            # x = x.to(self.tcn.network[0].net[0].weight.dtype)
+>>>>>>> 6537f47... GPU testing done
             y1 = self.tcn(x)
             o = self.output(y1.transpose(1, 2)).squeeze()
             return o
@@ -250,6 +254,7 @@ if __name__ == '__main__':
                 ShowGraph
             ],
             metrics=[fbeta],
+<<<<<<< HEAD
         )
         learn.fit(
             1,
@@ -259,5 +264,25 @@ if __name__ == '__main__':
             #         learn, every='improvement', monitor='loss', name='proto'
                 # )
             ],
+=======
+        ).to_fp16(loss_scale=1024)
+        # learn.fit(
+            # 1, 3e-4,
+            # callbacks=[
+                # fastai.callbacks.TerminateOnNaNCallback(),
+            # #     fastai.callbacks.SaveModelCallback(
+            # #         learn, every='improvement', monitor='loss', name='proto'
+                # # )
+            # ],
+        # )
+        learn.fit_one_cycle(
+            cyc_len=20, max_lr=1e-4, wd=1e-4, callbacks=[
+                TerminateOnNaNCallback(),
+                SaveModelCallback(
+                    learn, every='improvement', monitor='valid_loss', name='ProtoTCN-%d_fold' % (idx+1)
+                )
+            ]
+>>>>>>> 6537f47... GPU testing done
         )
+        learn.save('10fold-%d_TCN' % (idx+1))
         learners.append(learn)
