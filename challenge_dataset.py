@@ -245,7 +245,7 @@ if __name__ == '__main__':
             model=net.cuda(),
             loss_func=nn.BCEWithLogitsLoss(),
             path='prototyping',
-            model_dir='fold-%d' % (idx+1),
+            model_dir='10fold-100',
             callback_fns=[
                 fastai.callbacks.CSVLogger,
                 ShowGraph
@@ -262,12 +262,12 @@ if __name__ == '__main__':
             # ],
         # )
         learn.fit_one_cycle(
-            cyc_len=20, max_lr=1e-4, wd=1e-4, callbacks=[
+            cyc_len=100, max_lr=1e-4, wd=1e-4, callbacks=[
                 TerminateOnNaNCallback(),
                 SaveModelCallback(
                     learn, every='improvement', monitor='valid_loss', name='ProtoTCN-%d_fold' % (idx+1)
                 )
             ]
         )
-        learn.save('10fold-%d_TCN' % (idx+1))
+        learn.save('TCN_%d' % (idx+1))
         learners.append(learn)
