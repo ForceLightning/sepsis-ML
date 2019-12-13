@@ -57,7 +57,7 @@ if __name__ == '__main__':
         'datab.pkl',
         collate_fn=pad_collate,
         pin_memory=False,
-        num_workers=8,
+        num_workers=4,
         bs=512
     )
     print('Done')
@@ -101,13 +101,13 @@ if __name__ == '__main__':
             model=net.cuda(),
             loss_func=nn.BCEWithLogitsLoss(),
             path='prototyping',
-            model_dir='10fold-100',
+            model_dir='10fold-20',
             callback_fns=[
                 fastai.callbacks.CSVLogger,
                 ShowGraph
             ],
             metrics=[fbeta],
-        ).to_fp16(loss_scale=1024)
+        )
         # learn.fit(
             # 1, 3e-4,
             # callbacks=[
@@ -118,7 +118,7 @@ if __name__ == '__main__':
             # ],
         # )
         learn.fit_one_cycle(
-            cyc_len=100, max_lr=1e-4, wd=1e-4, callbacks=[
+            cyc_len=20, max_lr=1e-3, wd=1e-4, callbacks=[
                 TerminateOnNaNCallback(),
                 SaveModelCallback(
                     learn, every='improvement', monitor='valid_loss', name='ProtoTCN-%d_fold' % (idx+1)
