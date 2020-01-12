@@ -8,6 +8,7 @@ from pathlib import Path
 import traceback
 from multiprocessing import Pool
 from functools import partial
+import json
 
 # MODULE IMPORTS
 import numpy as np
@@ -65,65 +66,81 @@ if __name__ == '__main__':
     # Stratified K-Fold Crossval
     learners = []
     skf = StratifiedKFold(10, random_state=42)
+    if os.path.exists('prototyping/model.json'):
+        with open('prototyping/model.json', 'r') as f:
+            interruptable_info = json.load(f)
+    else:
+        interruptable_info = {}
+        interruptable_info['fold'] = 0
+        interruptable_info['epoch'] = 0
     for idx, (train_idx, test_idx) in enumerate(skf.split(range(len(datab.test_ds.x)), np.any(datab.test_ds.y.items, axis=1).astype('int'))):
-        print("%d/10 Folds" % (idx+1))
-        split_ils = datab.test_ds.x.split_by_idxs(train_idx, test_idx)
-        split_ils_y = datab.test_ds.y.split_by_idxs(train_idx, test_idx)
-        x_train, x_valid, y_train, y_valid = split_ils.train, split_ils.valid, \
-            split_ils_y.train, split_ils_y.valid
-        ll = fastai.data_block.LabelLists(
-            datab.path,
-            train=data_block.LabelList(x_train, y_train, tfms=[]),
-            valid=data_block.LabelList(x_valid, y_valid, tfms=[])
-        )
-        print("Loading Database", end='\t')
-        datab = ll.transform([]).databunch(
-            collate_fn=pad_collate,
-            num_workers=4,
-            pin_memory=True,
-            bs=512
-        )
-        print("Done")
+        if idx >= interruptable_info['fold']:
+            print("%d/10 Folds" % (idx+1))
+            split_ils = datab.test_ds.x.split_by_idxs(train_idx, test_idx)
+            split_ils_y = datab.test_ds.y.split_by_idxs(train_idx, test_idx)
+            x_train, x_valid, y_train, y_valid = split_ils.train, split_ils.valid, \
+                split_ils_y.train, split_ils_y.valid
+            ll = fastai.data_block.LabelLists(
+                datab.path,
+                train=data_block.LabelList(x_train, y_train, tfms=[]),
+                valid=data_block.LabelList(x_valid, y_valid, tfms=[]),
+            )
+            ll.test = datab.test_ds
+            print("Loading Database", end='\t')
+            datab = ll.transform([]).databunch(
+                collate_fn=pad_collate,
+                num_workers=4,
+                pin_memory=True,
+                bs=512
+            )
+            print("Done")
 
 
-        net = TCN(
-            40,
-            336,
-            [32] * 3,
-            64,
-            0.2,
-            use_skip_connections=True,
-            reduce_dimensionality=False
-        )
+            net = TCN(
+                40,
+                336,
+                [32] * 3,
+                64,
+                0.2,
+                use_skip_connections=True,
+                reduce_dimensionality=False
+            )
 
-        learn = Learner(
-            data=datab,
-            model=net.cuda(),
-            loss_func=nn.BCEWithLogitsLoss(),
-            path='prototyping',
-            model_dir='10fold-20',
-            callback_fns=[
-                fastai.callbacks.CSVLogger,
-                ShowGraph
-            ],
-            metrics=[fbeta],
-        )
-        # learn.fit(
-            # 1, 3e-4,
-            # callbacks=[
-                # fastai.callbacks.TerminateOnNaNCallback(),
-            # #     fastai.callbacks.SaveModelCallback(
-            # #         learn, every='improvement', monitor='loss', name='proto'
-                # # )
-            # ],
-        # )
-        learn.fit_one_cycle(
-            cyc_len=20, max_lr=1e-3, wd=1e-4, callbacks=[
-                TerminateOnNaNCallback(),
-                SaveModelCallback(
-                    learn, every='improvement', monitor='valid_loss', name='ProtoTCN-%d_fold' % (idx+1)
+            learn = Learner(data=datab, model=net.cuda())
+            if interruptable_info['epoch'] != 0 and os.path.exists('prototyping/10fold-50/ProtoTCN-%d_fold-current.pth' % (idx+1)):
+                learn = Learner.load('prototyping/10fold-50/ProtoTCN-%d_fold-current_%d.pth' % (idx+1, interruptable_info['epoch']+1))
+            else:
+                learn = Learner(
+                    data=datab,
+                    model=net.cuda(),
+                    loss_func=nn.BCEWithLogitsLoss(),
+                    path='prototyping',
+                    model_dir='10fold-50',
+                    callback_fns=[
+                        fastai.callbacks.CSVLogger,
+                        ShowGraph
+                    ],
+                    metrics=[fbeta],
                 )
-            ]
-        )
-        learn.save('TCN_%d' % (idx+1))
-        learners.append(learn)
+            # learn.fit(
+                # 1, 3e-4,
+                # callbacks=[
+                    # fastai.callbacks.TerminateOnNaNCallback(),
+                # #     fastai.callbacks.SaveModelCallback(
+                # #         learn, every='improvement', monitor='loss', name='proto'
+                    # # )
+                # ],
+            # )
+            learn.fit_one_cycle(
+                cyc_len=50, max_lr=1e-3, wd=1e-4, start_epoch=interruptable_info['epoch'], callbacks=[
+                    TerminateOnNaNCallback(),
+                    SaveModelCallback(
+                        learn, every='improvement', monitor='valid_loss', name='ProtoTCN-%d_fold-best' % (idx+1)
+                    ),
+                    SaveModelCallback(
+                        learn, every='epoch', monitor='valid_loss', name='ProtoTCN-%d_fold-current' % (idx+1)
+                    ),
+                    JSONLogger(learn, idx, 'model.json')
+                ]
+            )
+            interruptable_info['epoch'] = 0
