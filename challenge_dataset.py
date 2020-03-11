@@ -12,7 +12,7 @@ import json
 
 # MODULE IMPORTS
 import numpy as np
-import pandas as pd
+# import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 # import h5py
@@ -65,7 +65,7 @@ if __name__ == '__main__':
     
     # Stratified K-Fold Crossval
     learners = []
-    skf = StratifiedKFold(10, random_state=42)
+    skf = StratifiedKFold(10, random_state=42, shuffle=True)
     if os.path.exists('prototyping/model.json'):
         with open('prototyping/model.json', 'r') as f:
             interruptable_info = json.load(f)
@@ -107,20 +107,25 @@ if __name__ == '__main__':
             )
 
             learn = Learner(data=datab, model=net.cuda())
-            if interruptable_info['epoch'] != 0 and os.path.exists('prototyping/10fold-50/ProtoTCN-%d_fold-current.pth' % (idx+1)):
-                learn = Learner.load('prototyping/10fold-50/ProtoTCN-%d_fold-current_%d.pth' % (idx+1, interruptable_info['epoch']+1))
+
+            bce_weights = np.ones(336, dtype=float) * 40336.0
+            bce_weights[-10:] = [21.570053, 15.13546,  13.846893, 13.827906, 13.804244, 13.804244, 13.794802, 13.794802, 13.780663, 13.757162]
+            bce_weights = torch.tensor(bce_weights, device=torch.device('cuda:0'))
+
+            if interruptable_info['epoch'] != 0 and os.path.exists('prototyping/10fold-100(2)/ProtoTCN-%d_fold-current.pth' % (idx+1)):
+                learn = Learner.load('prototyping/10fold-100(2)/ProtoTCN-%d_fold-current_%d.pth' % (idx+1, interruptable_info['epoch']+1))
             else:
                 learn = Learner(
                     data=datab,
                     model=net.cuda(),
-                    loss_func=nn.BCEWithLogitsLoss(),
+                    loss_func=nn.BCEWithLogitsLoss(pos_weight=bce_weights),
                     path='prototyping',
-                    model_dir='10fold-50',
+                    model_dir='10fold-100(2)',
                     callback_fns=[
                         fastai.callbacks.CSVLogger,
                         ShowGraph
                     ],
-                    metrics=[fbeta],
+                    metrics=[partial(fbeta, beta=14.7)],
                 )
             # learn.fit(
                 # 1, 3e-4,
@@ -132,7 +137,7 @@ if __name__ == '__main__':
                 # ],
             # )
             learn.fit_one_cycle(
-                cyc_len=50, max_lr=1e-3, wd=1e-4, start_epoch=interruptable_info['epoch'], callbacks=[
+                cyc_len=100, max_lr=1e-3, wd=1e-4, start_epoch=interruptable_info['epoch'], callbacks=[
                     TerminateOnNaNCallback(),
                     SaveModelCallback(
                         learn, every='improvement', monitor='valid_loss', name='ProtoTCN-%d_fold-best' % (idx+1)

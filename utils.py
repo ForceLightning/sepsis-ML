@@ -14,7 +14,7 @@ from fastai.callbacks import *
 from fastai import core, data_block
 from fastai.distributed import *
 
-from TCN.TCN.tcn import TemporalConvNet, TemporalSkipBlock
+from TCN.TCN.tcn import TemporalConvNet, TemporalSkipBlock, TCN_DimensionalityReduced
 
 class patient_data(core.ItemBase):
     def __init__(self, fn):
@@ -96,33 +96,6 @@ def pad_collate(batch):
     targets = torch.stack([torch.from_numpy(item[1].data) for item in batch], dim=0)
     return [data, targets]
 
-class TCN_DimensionalityReduced(nn.Module):
-    def __init__(self, num_inputs, num_channels, kernel_size=2, dropout=0.2, use_skip_connections=False, reduce_dimensionality=True):
-        super(TCN_DimensionalityReduced, self).__init__()
-        self.use_skip_connections = use_skip_connections
-        layers = []
-        num_levels = len(num_channels)
-        self.reduce_dimensionality = reduce_dimensionality
-        if self.reduce_dimensionality:
-            self.d_reduce = nn.Conv1d(num_inputs, num_channels[0], kernel_size=1)
-        for i in range(num_levels):
-            dilation_size = 2 ** i
-            in_channels = num_channels[i-1] if (self.reduce_dimensionality or i!=0) else num_inputs
-            out_channels = num_channels[i]
-            layers += [TemporalSkipBlock(in_channels, out_channels, kernel_size, stride=1, dilation=dilation_size,
-                                         padding=(kernel_size-1) * dilation_size, dropout=dropout)]
-        self.network = nn.Sequential(*layers)
-
-    def forward(self, x):
-        x = x.to(self.network[0].net[0].weight.dtype)
-        if self.use_skip_connections:
-            for tb in [m for m in self.network.modules()][2].children():
-                skips = [layer for layer in tb.children()][-1]
-                self.network(x).add_(skips)
-        if self.reduce_dimensionality:
-            x = self.d_reduce(x)
-        return self.network(x)
-
 class TCN(nn.Module):
     def __init__(self, input_size, output_size, num_channels, kernel_size, dropout, **kwargs):
         super(TCN, self).__init__()
@@ -153,13 +126,13 @@ class JSONLogger(LearnerCallback):
         if os.path.exists(self.path):
             with open(self.path, 'r+') as f:
                 self.json = json.load(f)
+                f.seek(0)
                 f.truncate(0)
                 self.json['fold'] = self.fold
                 json.dump(self.json, f, indent=4, sort_keys=True)
         else:
             with open(self.path, 'w') as f:
                 self.json = {'fold':self.fold, 'epoch':0}
-                f.truncate(0)
                 json.dump(self.json, f, indent=4, sort_keys=True)
 
     def on_epoch_end(self, epoch: int, **kwargs):
