@@ -99,8 +99,8 @@ if __name__ == '__main__':
             net = TCN(
                 40,
                 336,
-                [32] * 3,
-                64,
+                [32] * 9,
+                2,
                 0.2,
                 use_skip_connections=True,
                 reduce_dimensionality=False
@@ -108,19 +108,21 @@ if __name__ == '__main__':
 
             learn = Learner(data=datab, model=net.cuda())
 
-            bce_weights = np.ones(336, dtype=float) * 40336.0
-            bce_weights[-10:] = [21.570053, 15.13546,  13.846893, 13.827906, 13.804244, 13.804244, 13.794802, 13.794802, 13.780663, 13.757162]
-            bce_weights = torch.tensor(bce_weights, device=torch.device('cuda:0'))
+            # bce_weights = np.ones(336, dtype=float) * 40336.0
+            # bce_weights[-10:] = [21.570053, 15.13546,  13.846893, 13.827906, 13.804244, 13.804244, 13.794802, 13.794802, 13.780663, 13.757162]
+            # bce_weights = torch.tensor(bce_weights, device=torch.device('cuda:0'))
 
-            if interruptable_info['epoch'] != 0 and os.path.exists('prototyping/10fold-100(2)/ProtoTCN-%d_fold-current.pth' % (idx+1)):
-                learn = Learner.load('prototyping/10fold-100(2)/ProtoTCN-%d_fold-current_%d.pth' % (idx+1, interruptable_info['epoch']+1))
+            if interruptable_info['epoch'] != 0 and os.path.exists('prototyping/10fold-20-tcn9/ProtoTCN-%d_fold-current.pth' % (idx+1)):
+                learn = Learner.load('prototyping/10fold-20-tcn9/ProtoTCN-%d_fold-current_%d.pth' % (idx+1, interruptable_info['epoch']+1))
             else:
                 learn = Learner(
                     data=datab,
                     model=net.cuda(),
-                    loss_func=nn.BCEWithLogitsLoss(pos_weight=bce_weights),
+                    loss_func=nn.BCEWithLogitsLoss(
+                        # pos_weight=bce_weights
+                    ),
                     path='prototyping',
-                    model_dir='10fold-100(2)',
+                    model_dir='10fold-20-tcn9',
                     callback_fns=[
                         fastai.callbacks.CSVLogger,
                         ShowGraph
@@ -137,7 +139,7 @@ if __name__ == '__main__':
                 # ],
             # )
             learn.fit_one_cycle(
-                cyc_len=100, max_lr=1e-3, wd=1e-4, start_epoch=interruptable_info['epoch'], callbacks=[
+                cyc_len=20, max_lr=7e-4, wd=1e-3, start_epoch=interruptable_info['epoch'], callbacks=[
                     TerminateOnNaNCallback(),
                     SaveModelCallback(
                         learn, every='improvement', monitor='valid_loss', name='ProtoTCN-%d_fold-best' % (idx+1)
