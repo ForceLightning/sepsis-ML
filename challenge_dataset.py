@@ -54,7 +54,7 @@ if __name__ == '__main__':
 
     print('Loading Database...', end='\t')
     datab = fastai.basic_train.load_data(
-        'D:/training_cov_npy/',
+        'C:/Users/chris/Downloads/training_cov_npy',
         'datab.pkl',
         collate_fn=pad_collate,
         pin_memory=False,
@@ -112,8 +112,8 @@ if __name__ == '__main__':
             # bce_weights[-10:] = [21.570053, 15.13546,  13.846893, 13.827906, 13.804244, 13.804244, 13.794802, 13.794802, 13.780663, 13.757162]
             # bce_weights = torch.tensor(bce_weights, device=torch.device('cuda:0'))
 
-            if interruptable_info['epoch'] != 0 and os.path.exists('prototyping/10fold-20-tcn9/ProtoTCN-%d_fold-current.pth' % (idx+1)):
-                learn = Learner.load('prototyping/10fold-20-tcn9/ProtoTCN-%d_fold-current_%d.pth' % (idx+1, interruptable_info['epoch']+1))
+            if interruptable_info['epoch'] != 0 and os.path.exists('prototyping/10fold-100(2)/ProtoTCN-%d_fold-current.pth' % (idx+1)):
+                learn = Learner.load('prototyping/10fold-100(2)/ProtoTCN-%d_fold-current_%d.pth' % (idx+1, interruptable_info['epoch']+1))
             else:
                 learn = Learner(
                     data=datab,
@@ -122,9 +122,12 @@ if __name__ == '__main__':
                         # pos_weight=bce_weights
                     ),
                     path='prototyping',
-                    model_dir='10fold-20-tcn9',
+                    model_dir='10fold-100(2)',
                     callback_fns=[
-                        fastai.callbacks.CSVLogger,
+                        partial(
+                            fastai.callbacks.CSVLogger, filename="%d-fold_history" % (idx+1),
+                            append=True
+                            ),
                         ShowGraph
                     ],
                     metrics=[partial(fbeta, beta=14.7)],
@@ -139,7 +142,7 @@ if __name__ == '__main__':
                 # ],
             # )
             learn.fit_one_cycle(
-                cyc_len=20, max_lr=7e-4, wd=1e-3, start_epoch=interruptable_info['epoch'], callbacks=[
+                cyc_len=100, max_lr=7e-4, wd=1e-3, start_epoch=interruptable_info['epoch'], callbacks=[
                     TerminateOnNaNCallback(),
                     SaveModelCallback(
                         learn, every='improvement', monitor='valid_loss', name='ProtoTCN-%d_fold-best' % (idx+1)
